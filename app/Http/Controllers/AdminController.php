@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Order;
 use Illuminate\Support\Facades\Validator;
+use PDF;
+use Notification;
+use App\Notifications\sendEmailNotificaiton;
 class AdminController extends Controller
 {
     public function viewCategory()
@@ -106,4 +110,47 @@ class AdminController extends Controller
         return redirect()->route('montagat');
     }
 
+    public function ShowOrders()
+    {
+        $orders = Order::all();
+        return view('admin.orders',compact('orders'));
+    }
+
+    public function DeliveredOrder($id)
+    {
+        $order = Order::find($id);
+        $order->delivery_statud = "Delieverd";
+        $order->payment_status = "Paid";
+        $order->save();
+        return redirect()->back();
+    }
+
+    public function PrintPDF($id)
+    {
+        $order = Order::find($id);
+        $pdf = PDF::loadView('admin.pdf',compact('order'));
+        return $pdf->download('oreder_details.pdf');
+    }
+
+    public function SendEmail($id)
+    {
+        $order = Order::find($id);
+            return view('admin.emailInfo',compact('order'));
+    }
+
+    public function notifyUser(Request $request,$id)
+    {
+        $order = Order::find($id);
+        $details= [
+            'message'=>$request->emailContent,
+        ];
+        Notification::send($order,new sendEmailNotificaiton($details));
+    }
+
+    public function searchOrder(Request $request)
+    {
+        $searchText = $request->search;
+        $orders= Order::where('name','LIKE',"%$searchText%")->orWhere('phone','LIKE',"%$searchText%")->orWhere('product_title','LIKE',"%$searchText%")->get();
+        return view('admin.orders',compact('orders'));
+    }
 }
